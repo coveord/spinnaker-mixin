@@ -122,7 +122,7 @@ grafana.dashboard.new(
   .addPanel(
     grafana.text.new(
       title='Service Description',
-      content='This srvice is the main integration point for Spinnaker cloud providers like AWS, Azure, CloudFoundry, GCP, Kubernetes, etc.',
+      content='This service is the main integration point for Spinnaker cloud providers like AWS, Azure, CloudFoundry, GCP, Kubernetes, etc.',
       span=3,
     )
   )
