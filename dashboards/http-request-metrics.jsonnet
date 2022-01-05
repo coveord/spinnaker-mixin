@@ -12,7 +12,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (controller, method) (rate(controller_invocations_total{job=~"$job", instance=~"$Instance"}[$__rate_interval]))',
+      'sum by (controller, method) (rate(controller_invocations_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval]))',
       legendFormat='{{controller}}/{{method}}',
     )
   )
@@ -28,7 +28,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (controller, method) (rate(controller_invocations_seconds_sum{job=~"$job", instance=~"$Instance"}[$__rate_interval]))\n / \n sum by (controller, method) (rate(controller_invocations_total{job=~"$job", instance=~"$Instance"}[$__rate_interval]))',
+      'sum by (controller, method) (rate(controller_invocations_seconds_sum{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval]))\n / \n sum by (controller, method) (rate(controller_invocations_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval]))',
       legendFormat='{{controller}}/{{method}}',
     )
   )
@@ -43,13 +43,13 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (statusCode, cause, controller, method) (rate(controller_invocations_total{job=~"$job", instance=~"$Instance", status="5xx"}[$__rate_interval]))',
+      'sum by (statusCode, cause, controller, method) (rate(controller_invocations_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance", status="5xx"}[$__interval]))',
       legendFormat='{{statusCode}}/{{cause}}/{{controller}}/{{method}}',
     )
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (statusCode, cause, controller, method) (rate(controller_invocations_total{job=~"$job", instance=~"$Instance", statusCode="429"}[$__rate_interval]))',
+      'sum by (statusCode, cause, controller, method) (rate(controller_invocations_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode="429"}[$__interval]))',
       legendFormat='{{statusCode}}/{{cause}}/{{controller}}/{{method}}',
     )
   )
@@ -65,7 +65,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (requestHost) (rate(okhttp_requests_seconds_count{job=~"$job", instance=~"$Instance"}[$__rate_interval]))',
+      'sum by (requestHost) (rate(okhttp_requests_seconds_count{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval]))',
       legendFormat='{{requestHost}}',
       interval='1m',
     )
@@ -82,7 +82,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (requestHost) (rate(okhttp_requests_seconds_sum{job=~"$job", instance=~"$Instance"}[$__rate_interval]))\n / \n sum by (requestHost) (rate(okhttp_requests_seconds_count{job="$job", instance=~"$Instance"}[$__rate_interval]))',
+      'sum by (requestHost) (rate(okhttp_requests_seconds_sum{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval]))\n / \n sum by (requestHost) (rate(okhttp_requests_seconds_count{job="$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval]))',
       legendFormat='{{requestHost}}',
       interval='1m',
     )
@@ -98,14 +98,14 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (requestHost, statusCode) (rate(okhttp_requests_seconds_count{job=~"$job", instance=~"$Instance", status=~"(5xx|Unknown)"}[$__rate_interval]))',
+      'sum by (requestHost, statusCode) (rate(okhttp_requests_seconds_count{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance", status=~"(5xx|Unknown)"}[$__interval]))',
       legendFormat='{{statusCode}}/{{status}}/{{requestHost}}',
       interval='1m',
     )
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (requestHost, statusCode) (rate(okhttp_requests_seconds_count{job=~"$job", instance=~"$Instance", statusCode="429"}[$__rate_interval]))',
+      'sum by (requestHost, statusCode) (rate(okhttp_requests_seconds_count{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode="429"}[$__interval]))',
       legendFormat='{{statusCode}}/{{requestHost}}',
       interval='1m',
     )

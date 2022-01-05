@@ -1,12 +1,14 @@
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Spinnaker Application Details',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-application-details',
+  timepicker=coveo.timepicker
 )
 
 // Templates
@@ -31,6 +33,32 @@ grafana.dashboard.new(
     sort=1,
   )
 )
+.addTemplate(
+  grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
 
 .addRow(
   grafana.row.new()
@@ -42,7 +70,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(stage_invocations_total{spinSvc=~".*orca.*", application=~"$Application"}[$__rate_interval])) by (application, type)',
+        'sum(rate(stage_invocations_total{spinSvc=~".*orca.*", application=~"$Application"}[$__interval])) by (application, type)',
         legendFormat='{{application}}/{{type}}',
       )
     )
@@ -56,7 +84,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(pipelines_triggered_total{spinSvc=~".*echo.*", application=~"$Application"}[$__rate_interval])) by (application)',
+        'sum(rate(pipelines_triggered_total{spinSvc=~".*echo.*", application=~"$Application", environment=~"$environment",region=~"$region"}[$__interval])) by (application)',
         legendFormat='{{application}}',
       )
     )
@@ -70,14 +98,14 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(bakesActive{spinSvc=~".*rosco.*"})',
+        'sum(bakesActive{spinSvc=~".*rosco.*", environment=~"$environment",region=~"$region"})',
         legendFormat='Active',
       )
     )
 
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesRequested_total{spinSvc=~".*rosco.*"}[$__rate_interval])) by (flavor)',
+        'sum(rate(bakesRequested_total{spinSvc=~".*rosco.*", environment=~"$environment",region=~"$region"}[$__interval])) by (flavor)',
         legendFormat='Request({{flavor}})',
       )
     )
@@ -92,7 +120,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesCompleted_seconds_count{spinSvc=~".*rosco.*",success="false"}[$__rate_interval])) by (cause, region)',
+        'sum(rate(bakesCompleted_seconds_count{spinSvc=~".*rosco.*",success="false", environment=~"$environment",region=~"$region"}[$__interval])) by (cause, region)',
         legendFormat='{{cause}}/{{region}}',
       )
     )
@@ -105,7 +133,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesCompleted_seconds_count{spinSvc=~".*rosco.*",success="true"}[$__rate_interval])) by (region)',
+        'sum(rate(bakesCompleted_seconds_count{spinSvc=~".*rosco.*",success="true", environment=~"$environment",region=~"$region"}[$__interval])) by (region)',
         legendFormat='{{region}}',
       )
     )
@@ -119,7 +147,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(resilience4j_circuitbreaker_state{state=~".*open"}) by (name, spinSvc)',
+        'sum(resilience4j_circuitbreaker_state{state=~".*open", environment=~"$environment",region=~"$region"}) by (name, spinSvc)',
         legendFormat='{{spinSvc}}-{{name}}',
       )
     )
@@ -132,7 +160,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(resilience4j_circuitbreaker_failure_rate[$__rate_interval])) by (name, spinSvc)',
+        'sum(rate(resilience4j_circuitbreaker_failure_rate{environment=~"$environment",region=~"$region"}[$__interval])) by (name, spinSvc)',
         legendFormat='{{spinSvc}}-{{name}}',
       )
     )
@@ -145,7 +173,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(resilience4j_circuitbreaker_state{state="half_open"}) by (name, spinSvc)',
+        'sum(resilience4j_circuitbreaker_state{state="half_open", environment=~"$environment",region=~"$region"}) by (name, spinSvc)',
         legendFormat='{{spinSvc}}-{{name}}',
       )
     )

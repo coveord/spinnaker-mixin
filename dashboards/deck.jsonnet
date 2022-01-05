@@ -1,13 +1,15 @@
 local kpm = import './kubernetes-pod-metrics.jsonnet';
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Deck',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-deck',
+  timepicker=coveo.timepicker,
 )
 
 // Links
@@ -53,9 +55,35 @@ grafana.dashboard.new(
 )
 .addTemplate(
   grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
     name='Instance',
     datasource='$datasource',
-    query='label_values(up{job=~"$job"}, instance)',
+    query='label_values(up{job=~"$job",environment=~"$environment",region=~"$region"}, instance)',
     allValues='.*',
     current='All',
     refresh=1,

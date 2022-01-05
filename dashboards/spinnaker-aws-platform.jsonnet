@@ -1,12 +1,14 @@
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Spinnaker AWS Platform',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-aws-platform',
+  timepicker=coveo.timepicker
 )
 
 // Templates
@@ -43,6 +45,32 @@ grafana.dashboard.new(
     sort=1,
   )
 )
+.addTemplate(
+  grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
 
 .addRow(
   grafana.row.new(
@@ -58,13 +86,13 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(AWS_delay_sum{instance=~"$Instance", statusCode="-1"}) by (serviceName)\n/\nsum(AWS_delay_count{instance=~"$Instance", statusCode="-1"}) by (serviceName) , "serviceName", "$1", "serviceName", "Amazon(.+)")',
+        'label_replace(sum(AWS_delay_sum{environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode="-1"}) by (serviceName)\n/\nsum(AWS_delay_count{environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode="-1"}) by (serviceName) , "serviceName", "$1", "serviceName", "Amazon(.+)")',
         legendFormat='{{serviceName}} / UNK',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(AWS_delay_sum{instance=~"$Instance", statusCode!="-1"}) by (serviceName, statusCode)\n/\nsum(AWS_delay_count{instance=~"$Instance", statusCode!="-1"}) by (serviceName, statusCode), "serviceName", "$1", "serviceName", "Amazon(.+)") ',
+        'label_replace(sum(AWS_delay_sum{environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode!="-1"}) by (serviceName, statusCode)\n/\nsum(AWS_delay_count{environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode!="-1"}) by (serviceName, statusCode), "serviceName", "$1", "serviceName", "Amazon(.+)") ',
         legendFormat='{{serviceName}} / {{statusCode}}',
       )
     )
@@ -79,13 +107,13 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(AWS_delay_sum{instance=~"$Instance", statusCode="-1"}) by (requestType)\n/\nsum(AWS_delay_count{instance=~"$Instance", statusCode="-1"}) by (requestType) ',
+        'sum(AWS_delay_sum{environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode="-1"}) by (requestType)\n/\nsum(AWS_delay_count{environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode="-1"}) by (requestType) ',
         legendFormat='{{requestType}} / UNK',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(AWS_delay_sum{instance=~"$Instance", statusCode!="-1"}) by (requestType, statusCode)\n/\nsum(AWS_delay_count{instance=~"$Instance", statusCode!="-1"}) by (requestType, statusCode) ',
+        'sum(AWS_delay_sum{environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode!="-1"}) by (requestType, statusCode)\n/\nsum(AWS_delay_count{environment=~"$environment",region=~"$region",instance=~"$Instance", statusCode!="-1"}) by (requestType, statusCode) ',
         legendFormat='{{requestType}} / {{statusCode}}',
       )
     )
@@ -99,7 +127,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",error="true"}[$__rate_interval])) by (serviceEndpoint, statusCode), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
+        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",error="true"}[$__interval])) by (serviceEndpoint, statusCode), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
         legendFormat='{{region}} / {{statusCode}}',
       )
     )
@@ -113,7 +141,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",error="true"}[$__rate_interval])) by (requestType, serviceName, statusCode, AWSErrorCode), "requestType", "$1", "requestType", "(.*)Request(.*)"), "serviceName",  "$1", "serviceName", "Amazon(.+)")',
+        'label_replace(label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",error="true"}[$__interval])) by (requestType, serviceName, statusCode, AWSErrorCode), "requestType", "$1", "requestType", "(.*)Request(.*)"), "serviceName",  "$1", "serviceName", "Amazon(.+)")',
         legendFormat='{{statusCode}}/{{serviceName}}.{{requestType}}->{{AWSErrorCode}}',
       )
     )
@@ -127,7 +155,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{instance=~"$Instance",serviceName="AmazonEC2", error="false"}[$__rate_interval])) by (serviceEndpoint), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
+        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceName="AmazonEC2", error="false"}[$__interval])) by (serviceEndpoint), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
         legendFormat='{{region}}',
       )
     )
@@ -141,7 +169,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName="AmazonEC2", error="false"}[$__rate_interval])) by (requestType, serviceName), "requestType", "$1", "requestType", "(.*)Request")',
+        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName="AmazonEC2", error="false"}[$__interval])) by (requestType, serviceName), "requestType", "$1", "requestType", "(.*)Request")',
         legendFormat='{{requestType}}',
       )
     )
@@ -156,7 +184,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_sum{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName="AmazonEC2"}[$__rate_interval])) by (serviceEndpoint, serviceName)\n/ sum(rate(aws_request_httpRequestTime_seconds_count{instance=~"$Instance",serviceName="AmazonEC2", error="false"}[$__rate_interval])) by (serviceEndpoint, serviceName), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
+        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_sum{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName="AmazonEC2"}[$__interval])) by (serviceEndpoint, serviceName)\n/ sum(rate(aws_request_httpRequestTime_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceName="AmazonEC2", error="false"}[$__interval])) by (serviceEndpoint, serviceName), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
         legendFormat='{{region}}',
       )
     )
@@ -171,7 +199,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(aws_request_httpRequestTime_seconds_sum{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName="AmazonEC2"}[$__rate_interval])) by (requestType, serviceName)\n/ sum(rate(aws_request_httpRequestTime_seconds_count{instance=~"$Instance",serviceName="AmazonEC2", error="false"}[$__rate_interval])) by (requestType, serviceName)',
+        'sum(rate(aws_request_httpRequestTime_seconds_sum{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName="AmazonEC2"}[$__interval])) by (requestType, serviceName)\n/ sum(rate(aws_request_httpRequestTime_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceName="AmazonEC2", error="false"}[$__interval])) by (requestType, serviceName)',
         legendFormat='{{requestType}}',
       )
     )
@@ -185,7 +213,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName!="AmazonEC2", error="false"}[$__rate_interval])) by (serviceName, serviceEndpoint), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
+        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName!="AmazonEC2", error="false"}[$__interval])) by (serviceName, serviceEndpoint), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
         legendFormat='{{serviceName}} / {{region}}',
       )
     )
@@ -199,7 +227,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName!="AmazonEC2", error="false"}[$__rate_interval])) by (requestType, serviceName), "serviceName", "$1", "serviceName", "Amazon(.+)")',
+        'label_replace(sum(rate(aws_request_httpRequestTime_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName!="AmazonEC2", error="false"}[$__interval])) by (requestType, serviceName), "serviceName", "$1", "serviceName", "Amazon(.+)")',
         legendFormat='{{serviceName}}.{{requestType}}',
       )
     )
@@ -214,7 +242,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(label_replace(sum(rate(aws_request_httpRequestTime_seconds_sum{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName!="AmazonEC2"}[$__rate_interval])) by (serviceEndpoint, serviceName)\n/ sum(rate(aws_request_httpRequestTime_seconds_count{serviceName!="AmazonEC2", error="false"}[$__rate_interval])) by (serviceEndpoint, serviceName), "serviceName", "$1", "serviceName", "Amazon(.+)"), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
+        'label_replace(label_replace(sum(rate(aws_request_httpRequestTime_seconds_sum{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName!="AmazonEC2"}[$__interval])) by (serviceEndpoint, serviceName)\n/ sum(rate(aws_request_httpRequestTime_seconds_count{serviceName!="AmazonEC2", error="false"}[$__interval])) by (serviceEndpoint, serviceName), "serviceName", "$1", "serviceName", "Amazon(.+)"), "region", "$1", "serviceEndpoint", "[^\\\\.]+\\\\.([^\\\\.]+).*")',
         legendFormat='{{serviceName}} / {{region}}',
       )
     )
@@ -229,7 +257,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(label_replace(sum(rate(aws_request_httpRequestTime_seconds_sum{instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName!="AmazonEC2"}[$__rate_interval])) by (requestType, serviceName)\n/\nsum(rate(aws_request_httpRequestTime_seconds_count{serviceName!="AmazonEC2", error="false"}[$__rate_interval])) by (requestType, serviceName), "serviceName", "$1", "serviceName", "Amazon(.+)"), "requestType", "$1", "requestType", "(.*)Request")',
+        'label_replace(label_replace(sum(rate(aws_request_httpRequestTime_seconds_sum{environment=~"$environment",region=~"$region",instance=~"$Instance",serviceEndpoint=~".*$AwsRegion.*",serviceName!="AmazonEC2"}[$__interval])) by (requestType, serviceName)\n/\nsum(rate(aws_request_httpRequestTime_seconds_count{serviceName!="AmazonEC2", error="false"}[$__interval])) by (requestType, serviceName), "serviceName", "$1", "serviceName", "Amazon(.+)"), "requestType", "$1", "requestType", "(.*)Request")',
         legendFormat='{{serviceName}}.{{requestType}}',
       )
     )

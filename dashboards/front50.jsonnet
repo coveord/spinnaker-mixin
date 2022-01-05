@@ -2,14 +2,16 @@ local hrm = import './http-request-metrics.jsonnet';
 local jvm = import './jvm-metrics.jsonnet';
 local kpm = import './kubernetes-pod-metrics.jsonnet';
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Front50',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-front50',
+  timepicker=coveo.timepicker
 )
 
 // Links
@@ -55,9 +57,35 @@ grafana.dashboard.new(
 )
 .addTemplate(
   grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
     name='Instance',
     datasource='$datasource',
-    query='label_values(up{job=~"$job"}, instance)',
+    query='label_values(up{job=~"$job",environment=~"$environment",region=~"$region"}, instance)',
     allValues='.*',
     current='All',
     refresh=1,
@@ -92,7 +120,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(resilience4j_circuitbreaker_state{job=~"$job", state=~".*open", instance=~"$Instance"}) by (name)',
+        'sum(resilience4j_circuitbreaker_state{job=~"$job", state=~".*open", environment=~"$environment",region=~"$region",instance=~"$Instance"}) by (name)',
         legendFormat='{{name}}',
       )
     )
@@ -105,7 +133,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(resilience4j_circuitbreaker_failure_rate{job=~"$job", instance=~"$Instance"}[$__rate_interval])) by (name)',
+        'sum(rate(resilience4j_circuitbreaker_failure_rate{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (name)',
         legendFormat='{{ name }}',
       )
     )
@@ -118,7 +146,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(resilience4j_circuitbreaker_state{job=~"$job", state="half_open", instance=~"$Instance"}) by (name)',
+        'sum(resilience4j_circuitbreaker_state{job=~"$job", state="half_open", environment=~"$environment",region=~"$region",instance=~"$Instance"}) by (name)',
         legendFormat='{{name}}',
       )
     )
@@ -131,13 +159,13 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(storageServiceSupport_autoRefreshTime_seconds_sum{instance=~"$Instance"}[$__rate_interval])) by (objectType)',
+        'sum(rate(storageServiceSupport_autoRefreshTime_seconds_sum{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (objectType)',
         legendFormat='force/{{objectType}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        '-1 * (sum(rate(storageServiceSupport_scheduledRefreshTime_seconds_sum{instance=~"$Instance"}[$__rate_interval])) by (objectType))',
+        '-1 * (sum(rate(storageServiceSupport_scheduledRefreshTime_seconds_sum{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (objectType))',
         legendFormat='{{objectType}}',
       )
     )
@@ -150,7 +178,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(storageServiceSupport_cacheSize{instance=~"$Instance"}) by (objectType)',
+        'sum(storageServiceSupport_cacheSize{environment=~"$environment",region=~"$region",instance=~"$Instance"}) by (objectType)',
         legendFormat='{{objectType}}',
       )
     )
@@ -173,13 +201,13 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(storageServiceSupport_numAdded_total{instance=~"$Instance"}[$__rate_interval])) by (objectType)',
+        'sum(rate(storageServiceSupport_numAdded_total{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (objectType)',
         legendFormat='add {{objectType}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        '-1 * sum(rate(storageServiceSupport_numRemoved_total{instance=~"$Instance"}[$__rate_interval])) by (objectType)',
+        '-1 * sum(rate(storageServiceSupport_numRemoved_total{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (objectType)',
         legendFormat='del {{objectType}}',
       )
     )
@@ -193,7 +221,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(front50:google:storage:invocation__count_total{instance=~"$Instance"}[$__rate_interval])) by (method)',
+        'sum(rate(front50:google:storage:invocation__count_total{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (method)',
         legendFormat='{{method}}',
       )
     )
@@ -208,7 +236,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(storageServiceSupport_numUpdated_total{instance=~"$Instance"}[$__rate_interval])) by (objectType)',
+        'sum(rate(storageServiceSupport_numUpdated_total{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (objectType)',
         legendFormat='{{objectType}}',
       )
     )
@@ -222,7 +250,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(front50:google:storage:invocation__totalTime_total{instance=~"$Instance"}[$__rate_interval])) by (method) / sum(rate(front50:google:storage:invocation__count_total{instance=~"$Instance"}[$__rate_interval])) by (method)',
+        'sum(rate(front50:google:storage:invocation__totalTime_total{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (method) / sum(rate(front50:google:storage:invocation__count_total{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (method)',
         legendFormat='{{method}}',
       )
     )
@@ -236,7 +264,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'avg by (objectType) (storageServiceSupport_cacheAge{instance=~"$Instance"})',
+        'avg by (objectType) (storageServiceSupport_cacheAge{environment=~"$environment",region=~"$region",instance=~"$Instance"})',
         legendFormat='{{objectType}}',
       )
     )

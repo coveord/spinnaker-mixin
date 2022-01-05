@@ -2,14 +2,16 @@ local hrm = import './http-request-metrics.jsonnet';
 local jvm = import './jvm-metrics.jsonnet';
 local kpm = import './kubernetes-pod-metrics.jsonnet';
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Orca',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-orca',
+  timepicker=coveo.timepicker
 )
 
 // Links
@@ -55,9 +57,35 @@ grafana.dashboard.new(
 )
 .addTemplate(
   grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
     name='Instance',
     datasource='$datasource',
-    query='label_values(up{job=~"$job"}, instance)',
+    query='label_values(up{job=~"$job",environment=~"$environment",region=~"$region"}, instance)',
     allValues='.*',
     current='All',
     refresh=1,
@@ -93,7 +121,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'max by (executionType) (\n  executions_active{container="orca"}\n)',
+        'max by (executionType) (\n  executions_active{environment=~"$environment",region=~"$region",container="orca"}\n)',
         legendFormat='{{ executionType }}'
       )
     )
@@ -108,7 +136,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (controller, status) (\n  rate(controller_invocations_seconds_sum{container="orca"}[$__rate_interval])\n) \n/\nsum by (controller, status) (\n  rate(controller_invocations_seconds_count{container="orca"}[$__rate_interval])\n)\n',
+        'sum by (controller, status) (\n  rate(controller_invocations_seconds_sum{environment=~"$environment",region=~"$region",container="orca"}[$__interval])\n) \n/\nsum by (controller, status) (\n  rate(controller_invocations_seconds_count{environment=~"$environment",region=~"$region",container="orca"}[$__interval])\n)\n',
         legendFormat='{{ controller }} :: {{ status }}',
       )
     )
@@ -122,7 +150,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (executionType) (\n  rate(task_invocations_duration_seconds_count{container="orca"}[$__rate_interval])\n)',
+        'sum by (executionType) (\n  rate(task_invocations_duration_seconds_count{environment=~"$environment",region=~"$region",container="orca"}[$__interval])\n)',
         legendFormat='{{ executionType }}',
       ),
     )
@@ -136,7 +164,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (application, executionType) (\n  rate(\n    task_invocations_duration_seconds_count{container="orca", status="RUNNING"}[$__rate_interval])\n) ',
+        'sum by (application, executionType) (\n  rate(\n    task_invocations_duration_seconds_count{environment=~"$environment",region=~"$region",container="orca", status="RUNNING"}[$__interval])\n) ',
         legendFormat='{{ application }} - {{ executionType }}',
       ),
     )
@@ -150,19 +178,19 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(\n  threadpool_activeCount{container="orca"}\n)',
+        'sum(\n  threadpool_activeCount{environment=~"$environment",region=~"$region",container="orca"}\n)',
         legendFormat='Active',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(\n  threadpool_blockingQueueSize{container="orca"}\n)',
+        'sum(\n  threadpool_blockingQueueSize{environment=~"$environment",region=~"$region",container="orca"}\n)',
         legendFormat='Blocking',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(\n  threadpool_poolSize{container="orca"}\n)',
+        'sum(\n  threadpool_poolSize{environment=~"$environment",region=~"$region",container="orca"}\n)',
         legendFormat='Size',
       )
     )
@@ -176,13 +204,13 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(\n  rate(queue_pushed_messages_total{container="orca"}[$__rate_interval])\n)',
+        'sum(\n  rate(queue_pushed_messages_total{environment=~"$environment",region=~"$region",container="orca"}[$__interval])\n)',
         legendFormat='Pushed',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(\n  rate(queue_acknowledged_messages_total{container="orca"}[$__rate_interval])\n)',
+        'sum(\n  rate(queue_acknowledged_messages_total{environment=~"$environment",region=~"$region",container="orca"}[$__interval])\n)',
         legendFormat="Ack'd",
       )
     )
@@ -196,19 +224,19 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'max(\n  queue_depth{job=~"$job", instance=~"$Instance"}\n)',
+        'max(\n  queue_depth{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}\n)',
         legendFormat='queued',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'max(\n  queue_ready_depth{job=~"$job", instance=~"$Instance"}\n)',
+        'max(\n  queue_ready_depth{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}\n)',
         legendFormat='ready',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'max(\nqueue_unacked_depth{job=~"$job", instance=~"$Instance"}\n)',
+        'max(\nqueue_unacked_depth{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}\n)',
         legendFormat='unacked',
       )
     )
@@ -222,19 +250,19 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(queue_retried_messages_total{job=~"$job", instance=~"$Instance"}[$__rate_interval])) by (job)',
+        'sum(rate(queue_retried_messages_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (job)',
         legendFormat='Retried',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(queue_dead_messages_total{job=~"$job", instance=~"$Instance"}[$__rate_interval])) by (job)',
+        'sum(rate(queue_dead_messages_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (job)',
         legendFormat='Dead',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(queue_orphaned_messages{job=~"$job", instance=~"$Instance"}[$__rate_interval])) by (job)',
+        'sum(rate(queue_orphaned_messages{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (job)',
         legendFormat='Orphaned',
       )
     )
@@ -249,13 +277,13 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(\n  queue_message_lag_seconds_sum{job=~"$job", instance=~"$Instance"}\n)\n/\nsum(\n  queue_message_lag_seconds_count{job=~"$job", instance=~"$Instance"}\n)',
+        'sum(\n  queue_message_lag_seconds_sum{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}\n)\n/\nsum(\n  queue_message_lag_seconds_count{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}\n)',
         legendFormat='mean',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'max(queue_message_lag_seconds_max{job=~"$job", instance=~"$Instance"})',
+        'max(queue_message_lag_seconds_max{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"})',
         legendFormat='max',
       )
     )
@@ -274,7 +302,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(stage_invocations_total{job=~"$job", instance=~"$Instance"}[$__rate_interval])) by (cloudProvider, type)',
+        'sum(rate(stage_invocations_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (cloudProvider, type)',
         legendFormat='{{type}}/{{cloudProvider}}',
       )
     )
@@ -287,7 +315,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(stage_invocations_duration_total{job=~"$job", instance=~"$Instance"}[$__rate_interval])) by (cloudProvider, stageType)',
+        'sum(rate(stage_invocations_duration_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (cloudProvider, stageType)',
         legendFormat='{{stageType}}/{{cloudProvider}}',
       )
     )
@@ -300,7 +328,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(stage_invocations_duration_total{job=~"$job", instance=~"$Instance", bucket!="lt5m"}[$__rate_interval])) by (stageType, cloudProvider, bucket)',
+        'sum(rate(stage_invocations_duration_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance", bucket!="lt5m"}[$__interval])) by (stageType, cloudProvider, bucket)',
         legendFormat='{{bucket}}/{{cloudProvider}}/{{stageType}}',
       )
     )
@@ -313,7 +341,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(threadpool_blockingQueueSize{job=~"$job", instance=~"$Instance"}[$__rate_interval])) by (id)',
+        'sum(rate(threadpool_blockingQueueSize{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (id)',
         legendFormat='{{id}}',
       )
     )
@@ -326,7 +354,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (application) (queue_zombies_total{job=~"$job", instance=~"$Instance"})',
+        'sum by (application) (queue_zombies_total{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"})',
         legendFormat='{{ application }}',
       )
     )
@@ -340,7 +368,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(threadpool_activeCount{job=~"$job", instance=~"$Instance"}) by (id)',
+        'sum(threadpool_activeCount{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}) by (id)',
         legendFormat='{{id}}',
       )
     )
@@ -353,7 +381,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(threadpool_poolSize{job=~"$job", instance=~"$Instance"}) by (id)',
+        'sum(threadpool_poolSize{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}) by (id)',
         legendFormat='{{id}}',
       )
     )

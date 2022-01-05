@@ -1,12 +1,14 @@
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Spinnaker Minimalist',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-minimalist',
+  timepicker=coveo.timepicker
 )
 
 // Templates
@@ -18,6 +20,33 @@ grafana.dashboard.new(
     '',
   )
 )
+.addTemplate(
+  grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+
 
 .addRow(
   grafana.row.new()
@@ -52,49 +81,49 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(controller_invocations_total{container="clouddriver",status="5xx"}[$__rate_interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
+        'label_replace(sum(rate(controller_invocations_total{environment=~"$environment",region=~"$region",container="clouddriver",status="5xx"}[$__interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
         legendFormat='Clouddriver/{{statusCode}}/{{controller}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(controller_invocations_total{container="echo",status="5xx"}[$__rate_interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
+        'label_replace(sum(rate(controller_invocations_total{environment=~"$environment",region=~"$region",container="echo",status="5xx"}[$__interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
         legendFormat='Echo/{{statusCode}}/{{controller}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(controller_invocations_total{container="fiat",status="5xx"}[$__rate_interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
+        'label_replace(sum(rate(controller_invocations_total{environment=~"$environment",region=~"$region",container="fiat",status="5xx"}[$__interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
         legendFormat='Fiat/{{statusCode}}/{{controller}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(controller_invocations_total{container="front50",status="5xx"}[$__rate_interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
+        'label_replace(sum(rate(controller_invocations_total{container="front50",status="5xx", environment=~"$environment",region=~"$region"}[$__interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
         legendFormat='Front50/{{statusCode}}/{{controller}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(controller_invocations_total{container="gate",status="5xx"}[$__rate_interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
+        'label_replace(sum(rate(controller_invocations_total{environment=~"$environment",region=~"$region",container="gate",status="5xx"}[$__interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
         legendFormat='Gate/{{statusCode}}/{{controller}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(controller_invocations_total{container="igor",status="5xx"}[$__rate_interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
+        'label_replace(sum(rate(controller_invocations_total{environment=~"$environment",region=~"$region",container="igor",status="5xx"}[$__interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
         legendFormat='Igor/{{statusCode}}/{{controller}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(controller_invocations_total{container="orca",status="5xx"}[$__rate_interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
+        'label_replace(sum(rate(controller_invocations_total{environment=~"$environment",region=~"$region",container="orca",status="5xx"}[$__interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
         legendFormat='Orca/{{statusCode}}/{{controller}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'label_replace(sum(rate(controller_invocations_total{container="rosco",status="5xx"}[$__rate_interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
+        'label_replace(sum(rate(controller_invocations_total{environment=~"$environment",region=~"$region",container="rosco",status="5xx"}[$__interval])) by (controller, statusCode), "controller", "$1", "controller", "(.*)Controller")',
         legendFormat='Rosco/{{statusCode}}/{{controller}}',
       )
     )
@@ -106,7 +135,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(stage_invocations_total[$__rate_interval])) by (type, cloudProvider)',
+        'sum(rate(stage_invocations_total{environment=~"$environment",region=~"$region"}[$__interval])) by (type, cloudProvider)',
         legendFormat='{{type}}/{{cloudProvider}}',
       )
     )
@@ -118,7 +147,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(stage_invocations_total[$__rate_interval])) by (cloudProvider, type)',
+        'sum(rate(stage_invocations_total{environment=~"$environment",region=~"$region"}[$__interval])) by (cloudProvider, type)',
         legendFormat='{{cloudProvider}} :: {{type}}',
       )
     )
@@ -134,7 +163,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(stage_invocations_duration_seconds_sum[$__rate_interval])) by (cloudProvider)\n/\nsum(rate(stage_invocations_duration_seconds_count[$__rate_interval])) by (cloudProvider)',
+        'sum(rate(stage_invocations_duration_seconds_sum{environment=~"$environment",region=~"$region"}[$__interval])) by (cloudProvider)\n/\nsum(rate(stage_invocations_duration_seconds_count[$__interval])) by (cloudProvider)',
         legendFormat='{{cloudProvider}}',
       )
     )
@@ -158,7 +187,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(pipelines_triggered_total[$__rate_interval])) by (application,monitor)',
+        'sum(rate(pipelines_triggered_total{environment=~"$environment",region=~"$region"}[$__interval])) by (application,monitor)',
         legendFormat='{{application}} :: {{ monitor }}',
       )
     )
@@ -170,7 +199,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'bakesActive',
+        'bakesActive{environment=~"$environment",region=~"$region"}',
         legendFormat='Active',
       )
     )
@@ -182,19 +211,19 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesRequested_total[$__rate_interval])) by (flavor)',
+        'sum(rate(bakesRequested_total{environment=~"$environment",region=~"$region"}[$__interval])) by (flavor)',
         legendFormat='Requested/{{flavor}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesCompleted_seconds_count{success="false"}[$__rate_interval])) by (region)',
+        'sum(rate(bakesCompleted_seconds_count{success="false", environment=~"$environment",region=~"$region"}[$__interval])) by (region)',
         legendFormat='Failure/{{region}}',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesCompleted_seconds_count{success="true"}[$__rate_interval])) by (region)',
+        'sum(rate(bakesCompleted_seconds_count{success="true", environment=~"$environment",region=~"$region"}[$__interval])) by (region)',
         legendFormat='Success/{{region}}',
       )
     )
@@ -206,7 +235,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(storageServiceSupport_cacheSize) by (objectType)',
+        'sum(storageServiceSupport_cacheSize{environment=~"$environment",region=~"$region"}},) by (objectType)',
         legendFormat='{{objectType}}',
       )
     )
@@ -218,7 +247,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(executionTime_seconds_count[$__rate_interval])) by (instance)',
+        'sum(rate(executionTime_seconds_count{environment=~"$environment",region=~"$region"}[$__interval])) by (instance)',
         legendFormat='{{instance}}',
       )
     )
@@ -231,7 +260,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(executionTime_seconds_sum[$__rate_interval])) by (instance) / sum(rate(executionTime_seconds_count[$__rate_interval])) by (instance)',
+        'sum(rate(executionTime_seconds_sum{environment=~"$environment",region=~"$region"}[$__interval])) by (instance) / sum(rate(executionTime_seconds_count[$__interval])) by (instance)',
         legendFormat='{{instance}}',
       )
     )

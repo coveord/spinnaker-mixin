@@ -2,14 +2,16 @@ local hrm = import './http-request-metrics.jsonnet';
 local jvm = import './jvm-metrics.jsonnet';
 local kpm = import './kubernetes-pod-metrics.jsonnet';
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Igor',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-igor',
+  timepicker=coveo.timepicker
 )
 
 // Links
@@ -55,9 +57,35 @@ grafana.dashboard.new(
 )
 .addTemplate(
   grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
     name='Instance',
     datasource='$datasource',
-    query='label_values(up{job=~"$job"}, instance)',
+    query='label_values(up{job=~"$job",environment=~"$environment",region=~"$region"}, instance)',
     allValues='.*',
     current='All',
     refresh=1,
@@ -92,7 +120,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (name) (\n  max_over_time(resilience4j_circuitbreaker_state{job=~"$job", state=~".*open", instance=~"$Instance"}[$__rate_interval])\n)',
+        'sum by (name) (\n  max_over_time(resilience4j_circuitbreaker_state{job=~"$job", state=~".*open", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])\n)',
         legendFormat='{{name}}',
       )
     )
@@ -105,7 +133,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (name) (\n  rate(resilience4j_circuitbreaker_failure_rate{job="$job", instance=~"$Instance"}[$__rate_interval])\n)',
+        'sum by (name) (\n  rate(resilience4j_circuitbreaker_failure_rate{job="$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])\n)',
         legendFormat='{{name}}',
       )
     )
@@ -119,7 +147,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (name) (\n  max_over_time(resilience4j_circuitbreaker_state{job="$job", state="half_open", instance=~"$Instance"}[$__rate_interval])\n)',
+        'sum by (name) (\n  max_over_time(resilience4j_circuitbreaker_state{job="$job", state="half_open", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])\n)',
         legendFormat='{{name}}',
       )
     )
@@ -133,7 +161,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (monitor) (\n  rate(pollingMonitor_pollTiming_seconds_count{job="$job", instance=~"$Instance"}[$__rate_interval])\n)',
+        'sum by (monitor) (\n  rate(pollingMonitor_pollTiming_seconds_count{job="$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])\n)',
         legendFormat='{{monitor}}',
       )
     )
@@ -148,7 +176,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (monitor) (rate(pollingMonitor_pollTiming_seconds_sum{job="$job", instance=~"$Instance"}[$__rate_interval]))\n/\nsum by (monitor) (rate(pollingMonitor_pollTiming_seconds_count{job="$job", instance=~"$Instance"}[$__rate_interval]))',
+        'sum by (monitor) (rate(pollingMonitor_pollTiming_seconds_sum{job="$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval]))\n/\nsum by (monitor) (rate(pollingMonitor_pollTiming_seconds_count{job="$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval]))',
         legendFormat='{{monitor}}',
       )
     )
@@ -163,7 +191,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (monitor, partition) (\n  rate(pollingMonitor_failed_total{job="$job", instance=~"$Instance"}[$__rate_interval])\n)',
+        'sum by (monitor, partition) (\n  rate(pollingMonitor_failed_total{job="$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])\n)',
         legendFormat='{{monitor}} / {{partition}}',
       )
     )
@@ -177,7 +205,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (account) (\n  rate(pollingMonitor_docker_retrieveImagesByAccount_seconds_count{job="$job", instance=~"$Instance"}[$__interval])\n)',
+        'sum by (account) (\n  rate(pollingMonitor_docker_retrieveImagesByAccount_seconds_count{job="$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])\n)',
         legendFormat='{{account}}',
       )
     )
@@ -190,7 +218,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (monitor, partition) (\n  max_over_time(pollingMonitor_itemsOverThreshold{job="$job", instance=~"$Instance"}[$__interval])\n)',
+        'sum by (monitor, partition) (\n  max_over_time(pollingMonitor_itemsOverThreshold{job="$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])\n)',
         legendFormat='{{ monitor }} / {{ partition }}',
       )
     )

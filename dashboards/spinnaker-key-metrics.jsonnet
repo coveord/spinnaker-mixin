@@ -1,12 +1,14 @@
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Spinnaker Key Metrics',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-key-metrics',
+  timepicker=coveo.timepicker
 )
 
 // Templates
@@ -16,6 +18,32 @@ grafana.dashboard.new(
     'datasource',
     'prometheus',
     '',
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
   )
 )
 
@@ -39,13 +67,13 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(\n  rate(echo_triggers_count[$__rate_interval])\n)',
+        'sum(\n  rate(echo_triggers_count{environment=~"$environment",region=~"$region"}[$__interval])\n)',
         legendFormat='triggers/s',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(\n  rate(echo_events_processed_total[$__rate_interval])\n)',
+        'sum(\n  rate(echo_events_processed_total{environment=~"$environment",region=~"$region"}[$__interval])\n)',
         legendFormat='events processed/s',
       )
     )
@@ -59,17 +87,17 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (partition) (\n  pollingMonitor_newItems\n)',
+        'sum by (partition) (\n  pollingMonitor_newItems{environment=~"$environment",region=~"$region"}\n)',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (partition) (\n  pollingMonitor_failed_total\n)',
+        'sum by (partition) (\n  pollingMonitor_failed_total{environment=~"$environment",region=~"$region"}\n)',
       )
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (partition) (\n  pollingMonitor_itemsOverThreshold\n)',
+        'sum by (partition) (\n  pollingMonitor_itemsOverThreshold{environment=~"$environment",region=~"$region"}\n)',
       )
     )
   )
@@ -81,7 +109,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (container, status) (\n  rate(controller_invocations_total[$__rate_interval])\n )',
+        'sum by (container, status) (\n  rate(controller_invocations_total[$__interval])\n )',
         legendFormat='{{ status }} :: {{ container }}',
       )
     )
@@ -95,7 +123,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (container, requestHost, status) (\n  rate(okhttp_requests_seconds_count[$__rate_interval])\n)',
+        'sum by (container, requestHost, status) (\n  rate(okhttp_requests_seconds_count[$__interval])\n)',
       )
     )
   )

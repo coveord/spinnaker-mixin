@@ -13,7 +13,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum(jvm_memory_used_bytes{job=~"$job", instance=~"$Instance", area="heap"}) by (id)',
+      'sum(jvm_memory_used_bytes{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance", area="heap"}) by (id)',
       legendFormat='{{id}}',
     )
   )
@@ -28,7 +28,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'sum by (instance) (jvm_gc_pause_seconds_sum{job=~"$job", instance=~"$Instance"}) \n / \n sum by (instance) (jvm_gc_pause_seconds_count{job=~"$job", instance=~"$Instance"})',
+      'sum by (instance) (jvm_gc_pause_seconds_sum{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}) \n / \n sum by (instance) (jvm_gc_pause_seconds_count{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"})',
       legendFormat='{{instance}}',
     )
   )
@@ -43,7 +43,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'max by (instance) (jvm_gc_pause_seconds_max{job=~"$job", instance=~"$Instance"})',
+      'max by (instance) (jvm_gc_pause_seconds_max{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"})',
       legendFormat='{{instance}}',
     )
   )
@@ -58,7 +58,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'max_over_time(jvm_threads_live_threads{job=~"$job", instance=~"$Instance"}[$__rate_interval])',
+      'max_over_time(jvm_threads_live_threads{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])',
       legendFormat='{{instance}}',
       interval='1m',
     )

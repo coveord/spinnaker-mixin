@@ -28,27 +28,27 @@ grafana.row.new(
   })
   .addTarget(
     grafana.prometheus.target(
-      'avg(rate(container_cpu_usage_seconds_total{container=~"$spinSvc"}[$__rate_interval]))',
+      'avg(rate(container_cpu_usage_seconds_total{environment=~"$environment",region=~"$region",container=~"$spinSvc"}[$__interval]))',
       legendFormat='avg',
       interval='1m',
     )
   )
   .addTarget(
     grafana.prometheus.target(
-      'max(rate(container_cpu_usage_seconds_total{container="$spinSvc"}[$__rate_interval]))',
+      'max(rate(container_cpu_usage_seconds_total{environment=~"$environment",region=~"$region",container="$spinSvc"}[$__interval]))',
       legendFormat='max',
       interval='1m',
     )
   )
   .addTarget(
     grafana.prometheus.target(
-      'avg(kube_pod_container_resource_limits_cpu_cores{container="$spinSvc"})',
+      'avg(kube_pod_container_resource_limits_cpu_cores{environment=~"$environment",region=~"$region",container="$spinSvc"})',
       legendFormat='Limit',
     )
   )
   .addTarget(
     grafana.prometheus.target(
-      'avg(kube_pod_container_resource_requests_cpu_cores{container="$spinSvc"})',
+      'avg(kube_pod_container_resource_requests_cpu_cores{environment=~"$environment",region=~"$region",container="$spinSvc"})',
       legendFormat='Request',
     )
   )
@@ -64,7 +64,7 @@ grafana.row.new(
   )
   .addTarget(
     grafana.prometheus.target(
-      'rate(container_cpu_cfs_throttled_periods_total{container="$spinSvc"}[$__rate_interval])\n/\nrate(container_cpu_cfs_periods_total{container="$spinSvc"}[$__rate_interval])',
+      'rate(container_cpu_cfs_throttled_periods_total{environment=~"$environment",region=~"$region",container="$spinSvc"}[$__interval])\n/\nrate(container_cpu_cfs_periods_total{environment=~"$environment",region=~"$region",container="$spinSvc"}[$__interval])',
       legendFormat='{{pod}}',
       interval='1m',
     )
@@ -95,19 +95,19 @@ grafana.row.new(
   })
   .addTarget(
     grafana.prometheus.target(
-      'avg(avg_over_time(container_memory_working_set_bytes{container="$spinSvc"}[$__interval]))',
+      'avg(avg_over_time(container_memory_working_set_bytes{environment=~"$environment",region=~"$region",container="$spinSvc"}[$__interval]))',
       legendFormat='avg',
     )
   )
   .addTarget(
     grafana.prometheus.target(
-      'max(max_over_time(container_memory_working_set_bytes{container="$spinSvc"}[$__interval]))',
+      'max(max_over_time(container_memory_working_set_bytes{environment=~"$environment",region=~"$region",container="$spinSvc"}[$__interval]))',
       legendFormat='max',
     )
   )
   .addTarget(
     grafana.prometheus.target(
-      'avg(kube_pod_container_resource_limits_memory_bytes{container="$spinSvc"})',
+      'avg(kube_pod_container_resource_limits_memory_bytes{environment=~"$environment",region=~"$region",container="$spinSvc"})',
       legendFormat='Limit',
     )
   )
@@ -127,13 +127,13 @@ grafana.row.new(
   })
   .addTarget(
     grafana.prometheus.target(
-      'avg(\n  sum without (interface) (\n    rate(container_network_receive_bytes_total{pod=~"$spinSvc.*"}[$__rate_interval])\n  )\n)',
+      'avg(\n  sum without (interface) (\n    rate(container_network_receive_bytes_total{pod=~"$spinSvc.*", environment=~"$environment",region=~"$region"}[$__interval])\n  )\n)',
       legendFormat='receive',
     )
   )
   .addTarget(
     grafana.prometheus.target(
-      'avg(\n  sum without (interface) (\n    rate(container_network_transmit_bytes_total{pod=~"$spinSvc.*"}[$__rate_interval])\n  )\n)',
+      'avg(\n  sum without (interface) (\n    rate(container_network_transmit_bytes_total{pod=~"$spinSvc.*", environment=~"$environment",region=~"$region"}[$__interval])\n  )\n)',
       legendFormat='transmit',
     )
   )

@@ -2,14 +2,16 @@ local hrm = import './http-request-metrics.jsonnet';
 local jvm = import './jvm-metrics.jsonnet';
 local kpm = import './kubernetes-pod-metrics.jsonnet';
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Rosco',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-rosco',
+  timepicker=coveo.timepicker
 )
 
 // Links
@@ -55,9 +57,35 @@ grafana.dashboard.new(
 )
 .addTemplate(
   grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
     name='Instance',
     datasource='$datasource',
-    query='label_values(up{job=~"$job"}, instance)',
+    query='label_values(up{job=~"$job",environment=~"$environment",region=~"$region"}, instance)',
     allValues='.*',
     current='All',
     refresh=1,
@@ -86,7 +114,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(bakesActive{instance=~"$Instance"}) by (instance)',
+        'sum(bakesActive{environment=~"$environment",region=~"$region",instance=~"$Instance"}) by (instance)',
         legendFormat='Active/{{instance}}',
       )
     )
@@ -99,7 +127,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesRequested_total{instance=~"$Instance"}[$__rate_interval])) by (flavor)',
+        'sum(rate(bakesRequested_total{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (flavor)',
         legendFormat='{{flavor}}',
       )
     )
@@ -112,7 +140,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesCompleted_seconds_count{instance=~"$Instance",success="false"}[$__rate_interval])) by (cause, region)',
+        'sum(rate(bakesCompleted_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",success="false"}[$__interval])) by (cause, region)',
         legendFormat='{{cause}}/{{region}}',
       )
     )
@@ -125,7 +153,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesCompleted_seconds_count{instance=~"$Instance",success="true"}[$__rate_interval])) by (region)',
+        'sum(rate(bakesCompleted_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",success="true"}[$__interval])) by (region)',
         legendFormat='/{{region}}',
       )
     )
@@ -140,7 +168,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesCompleted_seconds_sum{instance=~"$Instance",success="false"}[$__rate_interval])) by (cause,region)\n/\nsum(rate(bakesCompleted_seconds_count{instance=~"$Instance",success="false"}[$__rate_interval])) by (cause,region)',
+        'sum(rate(bakesCompleted_seconds_sum{environment=~"$environment",region=~"$region",instance=~"$Instance",success="false"}[$__interval])) by (cause,region)\n/\nsum(rate(bakesCompleted_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",success="false"}[$__interval])) by (cause,region)',
         legendFormat='{{cause}}/{{region}}',
       )
     )
@@ -155,7 +183,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(bakesCompleted_seconds_sum{instance=~"$Instance",success="true"}[$__rate_interval])) by (region)\n/\nsum(rate(bakesCompleted_seconds_count{instance=~"$Instance",success="true"}[$__rate_interval])) by (region)',
+        'sum(rate(bakesCompleted_seconds_sum{environment=~"$environment",region=~"$region",instance=~"$Instance",success="true"}[$__interval])) by (region)\n/\nsum(rate(bakesCompleted_seconds_count{environment=~"$environment",region=~"$region",instance=~"$Instance",success="true"}[$__interval])) by (region)',
         legendFormat='{{region}}',
       )
     )

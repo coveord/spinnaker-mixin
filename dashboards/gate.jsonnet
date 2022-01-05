@@ -2,14 +2,16 @@ local hrm = import './http-request-metrics.jsonnet';
 local jvm = import './jvm-metrics.jsonnet';
 local kpm = import './kubernetes-pod-metrics.jsonnet';
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local coveo = import './coveo.jsonnet';
 
 grafana.dashboard.new(
   'Gate',
   editable=true,
-  refresh='1m',
-  time_from='now-1h',
+  refresh='15m',
+  time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-gate',
+  timepicker=coveo.timepicker
 )
 
 // Links
@@ -55,9 +57,35 @@ grafana.dashboard.new(
 )
 .addTemplate(
   grafana.template.new(
+    name='environment',
+    label='Environment',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total, environment)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
+    name='region',
+    label='Region',
+    datasource='$datasource',
+    query='label_values(container_cpu_usage_seconds_total{environment=~"$environment"}, region)',
+    allValues='.*',
+    current='All',
+    refresh=1,
+    includeAll=true,
+    sort=1,
+  )
+)
+.addTemplate(
+  grafana.template.new(
     name='Instance',
     datasource='$datasource',
-    query='label_values(up{job=~"$job"}, instance)',
+    query='label_values(up{job=~"$job",environment=~"$environment",region=~"$region"}, instance)',
     allValues='.*',
     current='All',
     refresh=1,
@@ -92,7 +120,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(resilience4j_circuitbreaker_state{job=~"$job", state=~".*open", instance=~"$Instance"}) by (name)',
+        'sum(resilience4j_circuitbreaker_state{job=~"$job", state=~".*open", environment=~"$environment",region=~"$region",instance=~"$Instance"}) by (name)',
         legendFormat='{{name}}',
       )
     )
@@ -105,7 +133,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(resilience4j_circuitbreaker_failure_rate{job=~"$job", instance=~"$Instance"}[$__rate_interval])) by (name)',
+        'sum(rate(resilience4j_circuitbreaker_failure_rate{job=~"$job", environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])) by (name)',
         legendFormat='{{ name }}',
       )
     )
@@ -118,7 +146,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(resilience4j_circuitbreaker_state{job=~"$job", state="half_open", instance=~"$Instance"}) by (name)',
+        'sum(resilience4j_circuitbreaker_state{job=~"$job", state="half_open", environment=~"$environment",region=~"$region",instance=~"$Instance"}) by (name)',
         legendFormat='{{name}}',
       )
     )
@@ -131,7 +159,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'rate(rateLimitThrottling_total{instance=~"$Instance"}[$__rate_interval])',
+        'rate(rateLimitThrottling_total{environment=~"$environment",region=~"$region",instance=~"$Instance"}[$__interval])',
         legendFormat='',
       )
     )
