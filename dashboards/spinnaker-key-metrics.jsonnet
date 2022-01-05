@@ -109,7 +109,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (container, status) (\n  rate(controller_invocations_total[$__interval])\n )',
+        'sum by (container, status) (\n  rate(controller_invocations_total{environment=~"$environment",region=~"$region"}[$__interval])\n )',
         legendFormat='{{ status }} :: {{ container }}',
       )
     )
@@ -123,7 +123,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum by (container, requestHost, status) (\n  rate(okhttp_requests_seconds_count[$__interval])\n)',
+        'sum by (container, requestHost, status) (\n  rate(okhttp_requests_seconds_count{environment=~"$environment",region=~"$region"}[$__interval])\n)',
       )
     )
   )
@@ -137,7 +137,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'max by (account, agent, region) (cache_drift)',
+        'max by (account, agent, region) (cache_drift{environment=~"$environment",region=~"$region"})',
       )
     )
   )

@@ -744,7 +744,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'clouddriver:google:operationWaitRequests',
+        'clouddriver:google:operationWaitRequests{environment=~"$environment",region=~"$region"}',
         legendFormat='{{scope}}/{{basePhase}}',
       )
     )
@@ -783,7 +783,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'avg(rate(amazonClientProvider_rateLimitDelayMil[$__interval])) by (clientType)',
+        'avg(rate(amazonClientProvider_rateLimitDelayMil{environment=~"$environment",region=~"$region"}[$__interval])) by (clientType)',
         legendFormat='{{clientType}}',
       )
     )

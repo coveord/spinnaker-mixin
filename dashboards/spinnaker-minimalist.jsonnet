@@ -235,7 +235,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(storageServiceSupport_cacheSize{environment=~"$environment",region=~"$region"}},) by (objectType)',
+        'sum(storageServiceSupport_cacheSize{environment=~"$environment",region=~"$region"}) by (objectType)',
         legendFormat='{{objectType}}',
       )
     )
@@ -260,7 +260,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(rate(executionTime_seconds_sum{environment=~"$environment",region=~"$region"}[$__interval])) by (instance) / sum(rate(executionTime_seconds_count[$__interval])) by (instance)',
+        'sum(rate(executionTime_seconds_sum{environment=~"$environment",region=~"$region"}[$__interval])) by (instance) / sum(rate(executionTime_seconds_count{environment=~"$environment",region=~"$region"}[$__interval])) by (instance)',
         legendFormat='{{instance}}',
       )
     )
