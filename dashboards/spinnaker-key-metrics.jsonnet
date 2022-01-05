@@ -4,7 +4,6 @@ local coveo = import './coveo.jsonnet';
 grafana.dashboard.new(
   'Spinnaker Key Metrics',
   editable=true,
-  refresh='15m',
   time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-key-metrics',

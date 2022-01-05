@@ -4,7 +4,6 @@ local coveo = import './coveo.jsonnet';
 grafana.dashboard.new(
   'Spinnaker AWS Platform',
   editable=true,
-  refresh='15m',
   time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-aws-platform',

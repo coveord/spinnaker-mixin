@@ -5,7 +5,6 @@ local coveo = import './coveo.jsonnet';
 grafana.dashboard.new(
   'Deck',
   editable=true,
-  refresh='15m',
   time_from='now-15m',
   tags=['spinnaker'],
   uid='spinnaker-deck',
